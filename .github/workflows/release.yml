@@ -20,7 +20,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: true
-          
+
   release_assets:
     name: Release assets
     needs: create_release
@@ -32,6 +32,9 @@ jobs:
           - os: windows-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v1
+        
       - name: "Make build"
         run: make build
 
@@ -42,9 +45,6 @@ jobs:
       - name: "Make prepare-release-win"
         run: make prepare-release-win
         if: ${{ fromJSON(matrix.config.os == 'windows-latest') }}
-
-      - name: Checkout code
-        uses: actions/checkout@v1
 
       - uses: softprops/action-gh-release@v1
         with:
