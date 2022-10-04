@@ -1,28 +1,40 @@
-name: release
-
 on:
   push:
     tags:
       - 'v*'
 
 jobs:
-  build:
+  create_release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: true
+          
+  release_assets:
+    name: Release assets
+    needs: create_release
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
         config:
-          - os: "ubuntu-latest"
-            extension: ""
-            platformAgnosticChecks: true
-          - os: "windows-latest"
-            extension: ".exe"
-            extraArgs: ""
-    steps:
-      - uses: actions/checkout@v2
+          - os: ubuntu-latest
+          - os: windows-latest
 
+    steps:
       - name: "Make build"
         run: make build
-      
+
       - name: "Make prepare-release"
         run: make prepare-release
         if: ${{ fromJSON(matrix.config.os == 'ubuntu-latest') }}
@@ -31,15 +43,26 @@ jobs:
         run: make prepare-release-win
         if: ${{ fromJSON(matrix.config.os == 'windows-latest') }}
 
-      - uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v1
+
+      - uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: true
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           files: |
             files/*.txt
-            dansay-rs-unix.tar.gz
+
+      - uses: softprops/action-gh-release@v1
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          files: |
             dansay-rs-win.tar.gz
+        if: ${{ fromJSON(matrix.config.os == 'windows-latest') }}
+      
+      - uses: softprops/action-gh-release@v1
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          files: |
+            dansay-rs-unix.tar.gz
+        if: ${{ fromJSON(matrix.config.os == 'ubuntu-latest') }}
+            
