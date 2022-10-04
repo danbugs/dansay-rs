@@ -1,20 +1,37 @@
+name: release
+
 on:
   push:
     tags:
       - 'v*'
 
-name: Create Release
-
 jobs:
   build:
-    name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          - os: "ubuntu-latest"
+            extension: ""
+            platformAgnosticChecks: true
+          - os: "windows-latest"
+            extension: ".exe"
+            extraArgs: ""
     steps:
-      - name: Checkout code
-        uses: actions/checkout@master
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
+      - uses: actions/checkout@v2
+
+      - name: "Make build"
+        run: make build
+      
+      - name: "Make prepare-release"
+        run: make prepare-release
+        if: ${{ fromJSON(matrix.config.os == 'ubuntu-latest') }}
+
+      - name: "Make prepare-release-win"
+        run: make prepare-release-win
+        if: ${{ fromJSON(matrix.config.os == 'windows-latest') }}
+
+      - uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -22,3 +39,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: true
+          files: |
+            files/*.txt
+            dansay-rs-unix.tar.gz
+            dansay-rs-win.tar.gz
